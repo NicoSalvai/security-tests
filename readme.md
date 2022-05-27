@@ -8,3 +8,4 @@ refresh-token.header=refresh_token; <br>
 refresh-token.expiration=14400000; <br>
 claim-name=roles; <br>
 spring.application.name=<Nombre de la aplicacion>; <br>
+login-path=/api/auth;

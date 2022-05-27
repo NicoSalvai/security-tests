@@ -2,6 +2,7 @@ package org.nicotest.security;
 
 import lombok.RequiredArgsConstructor;
 import org.nicotest.security.filter.AuthenticationFilter;
+import org.nicotest.security.filter.AuthorizationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -32,6 +34,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private Long refreshTokenExpiration;
     @Value("${claim-name}")
     private String claimName;
+    @Value("${login-path}")
+    private String loginPath;
 
     private final UserDetailsService userDetailsService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
@@ -54,7 +58,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 refreshTokenExpiration,
                 claimName);
 
-        authenticationFilter.setFilterProcessesUrl("/api/auth");
+        authenticationFilter.setFilterProcessesUrl(loginPath);
+
+        final AuthorizationFilter authorizationFilter = new AuthorizationFilter(secretKey, claimName, loginPath);
 
         http.csrf().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
@@ -62,6 +68,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.authorizeRequests().antMatchers(HttpMethod.GET, "/api/users").hasAnyAuthority("ADMIN");
         http.authorizeRequests().antMatchers(HttpMethod.GET, "/api/users/**").hasAnyAuthority("ADMIN");
         http.addFilter(authenticationFilter);
+        http.addFilterBefore(authorizationFilter, UsernamePasswordAuthenticationFilter.class);
     }
 
     @Bean
