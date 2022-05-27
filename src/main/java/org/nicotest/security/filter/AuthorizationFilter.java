@@ -1,11 +1,9 @@
 package org.nicotest.security.filter;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.nicotest.model.client.UserDto;
+import org.nicotest.service.specification.ITokenService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,12 +15,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -31,39 +27,34 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class AuthorizationFilter extends OncePerRequestFilter {
 
     private static final String BEARER = "Bearer ";
-    private final String secretKey;
-    private final String claimName;
     private final String loginPath;
+    private final String refreshPath;
+    private final ITokenService tokenService;
 
-    public AuthorizationFilter(String secretKey, String claimName, String loginPath) {
+    public AuthorizationFilter(String loginPath, String refreshPath, ITokenService tokenService) {
         this.loginPath = loginPath;
-        this.claimName = claimName;
-        this.secretKey = secretKey;
+        this.refreshPath = refreshPath;
+        this.tokenService = tokenService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // No valido authorizacion en requests que vayan hacia el login
-        if (request.getServletPath().equals(loginPath)) {
+        if (request.getServletPath().equals(loginPath) || request.getServletPath().equals(refreshPath)) {
             filterChain.doFilter(request, response);
         } else {
             String authorizationHeader = request.getHeader(AUTHORIZATION);
-
             if(Objects.nonNull(authorizationHeader) && authorizationHeader.startsWith(BEARER)){
                 try {
                     String token = authorizationHeader.substring(BEARER.length());
-                    JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(secretKey.getBytes())).build();
-                    DecodedJWT decodedJWT = jwtVerifier.verify(token);
-
-                    String username = decodedJWT.getSubject();
-
-                    String[] roles = decodedJWT.getClaim(claimName).asArray(String.class);
-                    Collection<SimpleGrantedAuthority> authorities = Stream.of(roles)
-                            .map(SimpleGrantedAuthority::new)
-                            .collect(Collectors.toList());
+                    final UserDto userDto = tokenService.decodeJwtToken(token);
 
                     UsernamePasswordAuthenticationToken authenticationToken =
-                            new UsernamePasswordAuthenticationToken(username, null, authorities);
+                            new UsernamePasswordAuthenticationToken(userDto.getUsername(),
+                                    null,
+                                    userDto.getRoles().stream()
+                                            .map(SimpleGrantedAuthority::new)
+                                            .collect(Collectors.toList()));
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
                     filterChain.doFilter(request, response);

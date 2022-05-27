@@ -3,6 +3,8 @@ package org.nicotest.security;
 import lombok.RequiredArgsConstructor;
 import org.nicotest.security.filter.AuthenticationFilter;
 import org.nicotest.security.filter.AuthorizationFilter;
+import org.nicotest.service.specification.ITokenService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,20 +24,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-    @Value("${secret.key}")
-    private String secretKey;
-    @Value("${access-token.header}")
-    private String accessTokenHeader;
-    @Value("${access-token.expiration}")
-    private Long accessTokenExpiration;
-    @Value("${refresh-token.header}")
-    private String refreshTokenHeader;
-    @Value("${refresh-token.expiration}")
-    private Long refreshTokenExpiration;
-    @Value("${claim-name}")
-    private String claimName;
     @Value("${login-path}")
     private String loginPath;
+    @Value("${refresh-path}")
+    private String refreshPath;
+
+    @Autowired
+    private final ITokenService tokenService;
 
     private final UserDetailsService userDetailsService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
@@ -50,21 +45,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        final AuthenticationFilter authenticationFilter = new AuthenticationFilter(authenticationManager(),
-                secretKey,
-                accessTokenHeader,
-                accessTokenExpiration,
-                refreshTokenHeader,
-                refreshTokenExpiration,
-                claimName);
+        final AuthenticationFilter authenticationFilter = new AuthenticationFilter(authenticationManager(), tokenService);
 
         authenticationFilter.setFilterProcessesUrl(loginPath);
 
-        final AuthorizationFilter authorizationFilter = new AuthorizationFilter(secretKey, claimName, loginPath);
+        final AuthorizationFilter authorizationFilter = new AuthorizationFilter(loginPath, refreshPath, tokenService);
 
         http.csrf().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-        http.authorizeRequests().antMatchers("/api/health").permitAll();
+        http.authorizeRequests().antMatchers("/api/health", refreshPath, loginPath).permitAll();
         http.authorizeRequests().antMatchers(HttpMethod.GET, "/api/users").hasAnyAuthority("ADMIN");
         http.authorizeRequests().antMatchers(HttpMethod.GET, "/api/users/**").hasAnyAuthority("ADMIN");
         http.addFilter(authenticationFilter);
