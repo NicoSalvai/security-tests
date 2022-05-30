@@ -10,3 +10,9 @@ claim-name=roles; <br>
 spring.application.name=<Nombre de la aplicacion>; <br>
 login-path=/api/auth; <br>
 refresh-path=/api/auth/refresh;
+
+spring.datasource.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.datasource.password=
+spring.datasource.platform=
+spring.datasource.url=
+spring.datasource.username=
