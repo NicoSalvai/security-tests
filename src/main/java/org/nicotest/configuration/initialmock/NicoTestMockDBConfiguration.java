@@ -24,12 +24,12 @@ public class NicoTestMockDBConfiguration {
             roleRepository.save(roleClient);
 
             UserDtoSingIn user = new UserDtoSingIn();
-            user.setUsername("admin");
-            user.setPassword("123321");
+            user.setUsername("ADMIN");
+            user.setPassword("ADMIN");
 
             UserDtoSingIn userClient = new UserDtoSingIn();
-            userClient.setUsername("client");
-            userClient.setPassword("111111");
+            userClient.setUsername("CLIENT");
+            userClient.setPassword("CLIENT");
 
             Long userId = userService.saveUser(user).getId();
             Long userClientId = userService.saveUser(userClient).getId();
